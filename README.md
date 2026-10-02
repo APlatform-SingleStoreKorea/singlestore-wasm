@@ -70,14 +70,18 @@ python -m pip install -r .agents/skills/singlestore-wasm/requirements-python.txt
 
 스킬을 설치한 프로젝트를 Codex에서 열고 요청합니다.
 
+**함수명으로 요청**
+
 ```text
-$singlestore-wasm 두 문자열의 편집 거리를 Unicode 코드 포인트 기준으로 구현해줘.
+Levenshtein 거리 함수를 SingleStore Wasm 함수로 구현해줘.
 ```
 
-```text
-$singlestore-wasm 다음 Python 코드를 SingleStore Wasm 함수로 변환해줘.
+**기존 코드로 요청**
 
-[변환할 Python 코드]
+```text
+아래 코드를 SingleStore Wasm 함수로 변환해줘.
+
+[원본 코드]
 ```
 
 함수별 입력·출력과 원본 동작을 검토한 뒤 새 프로젝트에 구현하고 빌드합니다. 호출 방식·반환 형식·계산 의미에 변경이 필요한 경우에는 차이를 설명하고 확인합니다.
