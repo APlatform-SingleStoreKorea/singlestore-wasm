@@ -6,8 +6,6 @@
 
 DB 접속 정보가 없어도 로컬 구현·빌드·SQL 생성까지 진행합니다. 실제 DB 등록·호출 검증은 접속 정보와 필요한 권한이 제공된 경우 수행합니다.
 
-저장소: [APlatform-SingleStoreKorea/singlestore-wasm](https://github.com/APlatform-SingleStoreKorea/singlestore-wasm)
-
 ## 지원 환경
 
 - 에이전트: Codex
@@ -21,7 +19,7 @@ DB 접속 정보가 없어도 로컬 구현·빌드·SQL 생성까지 진행합�
 
 ### 1. 저장소 내려받기
 
-Git이 설치된 터미널에서 공개 저장소를 내려받습니다.
+Git이 설치된 터미널에서 저장소를 내려받습니다.
 
 ```bash
 git clone https://github.com/APlatform-SingleStoreKorea/singlestore-wasm.git
