@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "kind": "handle-udaf",
+  "target_version": "9.1.1",
+  "abi_profile": "canonical-handle",
+  "argument_types": [
+    "string"
+  ],
+  "input_contracts": {
+    "0": {
+      "abi": "string",
+      "sql_type": "TEXT",
+      "charset": "utf8mb4",
+      "collation": "utf8mb4_bin",
+      "nullable": false
+    }
+  },
+  "aggregates": {
+    "": {
+      "returns": {
+        "abi": "string",
+        "sql_type": "TEXT",
+        "charset": "utf8mb4",
+        "collation": "utf8mb4_bin",
+        "nullable": false
+      },
+      "callbacks": {
+        "initialize": "agg-init",
+        "iterate": "agg-step",
+        "merge": "agg-merge",
+        "terminate": "agg-result",
+        "serialize": "agg-encode",
+        "deserialize": "agg-decode",
+        "copymerge": "agg-copymerge",
+        "clone": "agg-clone",
+        "destroy": "agg-destroy"
+      }
+    }
+  },
+  "name": "{{name}}",
+  "cases": [],
+  "condition_array": null,
+  "json_array_input": true
+}

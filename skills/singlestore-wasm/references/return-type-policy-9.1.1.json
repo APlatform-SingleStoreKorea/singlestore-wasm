@@ -1,0 +1,18 @@
+{
+  "profile": [
+    "9.1.1",
+    "handle-udaf",
+    "canonical-handle"
+  ],
+  "abi": "string",
+  "explicit_sql_contract": {
+    "abi": "string",
+    "sql_type": "TEXT",
+    "charset": "utf8mb4",
+    "collation": "utf8mb4_bin",
+    "nullable": false
+  },
+  "policy": "This tool profile allows only the explicit contract shown. Other combinations require a separately reviewed profile.",
+  "db_verification": "not_run_for_new_projects",
+  "limitations": "A supported static profile is not proof of registration or calls on any particular server."
+}

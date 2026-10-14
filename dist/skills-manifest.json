@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "domain": "singlestore",
+  "skills": [
+    {
+      "name": "singlestore-wasm",
+      "description": "Use when creating SingleStore Wasm functions. Implements function descriptions or Python/Rust code and verifies Wasm build artifacts and registration SQL.",
+      "path": "skills/singlestore-wasm/SKILL.md",
+      "content_sha256": "2d529407ff79cbd06ce59582cdf5be161b3c8e00a3c709bcbcbb00aa8aabcbc3",
+      "tags": [
+        "singlestore",
+        "wasm",
+        "rust",
+        "udf",
+        "udaf"
+      ],
+      "activation_test": "tests/activation/singlestore-wasm.json",
+      "owners": []
+    }
+  ]
+}

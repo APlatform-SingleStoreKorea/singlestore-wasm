@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "domain": "singlestore",
+  "name_prefix": "singlestore-",
+  "owners": [],
+  "default_branch": "main",
+  "manifest_path": "dist/skills-manifest.json"
+}

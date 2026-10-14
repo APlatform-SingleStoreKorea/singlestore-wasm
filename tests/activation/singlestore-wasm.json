@@ -1,0 +1,13 @@
+{
+  "skill": "singlestore-wasm",
+  "positive": [
+    "이 Python 계산 코드를 SingleStore Wasm 함수로 이식하고 등록 SQL까지 만들어줘.",
+    "두 문자열의 편집 거리를 구하는 SingleStore Wasm 함수를 구현해줘.",
+    "이 Skill로 만든 Wasm 함수의 반환 계약과 빌드 산출물이 일치하는지 검증해줘."
+  ],
+  "negative": [
+    "SingleStore 테스트 클러스터를 yum으로 설치해줘.",
+    "SingleStore 쿼리 실행 계획을 보고 shard key와 sort key를 튜닝해줘.",
+    "브라우저에서 사용할 WebAssembly 웹 앱을 만들어줘."
+  ]
+}

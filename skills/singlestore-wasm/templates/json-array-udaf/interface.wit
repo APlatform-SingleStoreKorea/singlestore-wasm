@@ -1,0 +1,11 @@
+type state = s32
+type blob = list<u8>
+agg-init: func() -> state
+agg-step: func(s: state, conditions: string) -> state
+agg-merge: func(left: state, right: state) -> state
+agg-result: func(s: state) -> string
+agg-encode: func(s: state) -> blob
+agg-decode: func(bytes: blob) -> state
+agg-copymerge: func(left: state, right: state) -> state
+agg-clone: func(s: state) -> state
+agg-destroy: func(s: state) -> state
