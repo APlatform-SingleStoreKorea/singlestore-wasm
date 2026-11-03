@@ -2,7 +2,6 @@
 
 WIT의 `string`에는 SQL TEXT/LONGTEXT, 문자 집합 또는 collation 정보가 없다. `return_contracts.py`는 정확한 `(서버 버전, 함수 종류, ABI 프로필)`로 정책을 선택한다. 알 수 없는 조합은 미검증이며 일반 빌드/등록을 차단한다. TEXT를 모든 문자열 함수의 기본값으로 선택하지 않는다.
 
-retention의 JSON 직렬화/TEXT 반환은 [사용자 지정 반환 기본 정책](json-condition-array.md#retention-반환-기본-정책)을 적용하므로 다시 묻지 않는다. 다섯 반환 계약 필드는 그대로 명시하며 정책·WIT·SQL·Wasm 검사와 실제 실행 검증을 생략하지 않는다.
 
 ## Manifest
 

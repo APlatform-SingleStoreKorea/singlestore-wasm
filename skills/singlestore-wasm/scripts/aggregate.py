@@ -24,13 +24,8 @@ def value(value, kind):
     if kind == 'string':
         from common import string_literal
         if isinstance(value, dict) and set(value) == {'json_array'}:
-            def element(v):
-                if v is None: return 'NULL'
-                if type(v) is bool: return 'TRUE' if v else 'FALSE'
-                if type(v) is int: return str(v)
-                raise ValueError('JSON_BUILD_ARRAY test elements must be integer, boolean or NULL')
-            if not isinstance(value['json_array'], list): raise ValueError('json_array must be a list')
-            return 'JSON_BUILD_ARRAY('+', '.join(element(v) for v in value['json_array'])+')'
+            from public_contract import sql_literal
+            return sql_literal(value)
         if not isinstance(value, str): raise ValueError('string input requires text or json_array')
         return string_literal(value)
     if kind == 'f64':
@@ -49,6 +44,11 @@ def validate(m):
         raise ValueError('unsupported aggregate schema')
     ident(m['name'])
     types = m['argument_types']
+    if 'public_contract' in m:
+        from public_contract import argument_types, require
+        require(types == argument_types(m), 'HANDLE input types differ from public contract')
+        require(m['public_contract']['target']['sql_null'] == 'reject', 'HANDLE requires NOT NULL inputs')
+        require(m['target_version'] == m['public_contract']['target']['version'], 'target version mismatch')
     if not isinstance(types, list) or not types or any(t not in TYPES for t in types):
         raise ValueError('unsupported HANDLE argument type')
     input_declarations(m)
@@ -137,6 +137,9 @@ def validate(m):
             if not isinstance(case.get('expected_rows'),list) or not case['expected_rows']:
                 raise ValueError('fixture expected rows required')
             if any(len(row)!=len(case['group_by'])+1 for row in case['expected_rows']): raise ValueError('expected row arity')
+    if 'public_contract' in m:
+        from public_contract import check_form_coverage
+        check_form_coverage(m)
     return m
 
 
@@ -172,14 +175,14 @@ def input_declarations(m):
     return result
 
 
-def registrations(project, m, database, public):
+def registrations(project, m, public):
     b64=(project/'artifacts/module.wasm.b64').read_text().strip()
     wit=base64.b64encode((project/'interface.wit').read_bytes()).decode()
     check_project(project,m)
     items=[]
     for suffix,variant in m['aggregates'].items():
         name=ident(public+suffix)
-        sql=f'CREATE AGGREGATE `{ident(database)}`.`{name}` ('+', '.join(input_declarations(m))+')\n'
+        sql=f'CREATE AGGREGATE `{name}` ('+', '.join(input_declarations(m))+')\n'
         sql+=f"RETURNS {sql_type(resolve(m,variant))}\nWITH STATE HANDLE\nAS WASM FROM BASE64 '{b64}'\nWITH WIT FROM BASE64 '{wit}'\n"
         sql+='\n'.join(role.upper()+' WITH '+export.replace('-','_') for role,export in variant['callbacks'].items())
         items.append({'name':name,'kind':'AGGREGATE','suffix':suffix,'sql':sql})
@@ -187,7 +190,7 @@ def registrations(project, m, database, public):
     return items
 
 
-def cases(m, database, public):
+def cases(m, public):
     result=[]
     for case in m['cases']:
         types=m['argument_types']; columns=[f'a{i}' for i in range(len(types))]
@@ -195,7 +198,7 @@ def cases(m, database, public):
         if selects: source=' UNION ALL '.join(selects)
         else: source='SELECT * FROM (SELECT '+', '.join((value('[]',t) if t=='string' else '0')+' AS '+n for n,t in zip(columns,types))+') AS empty_source WHERE 1=0'
         name=ident(public+case.get('variant',''))
-        sql=f'SELECT `{ident(database)}`.`{name}`('+', '.join(columns)+f') AS actual FROM ({source}) AS events'
+        sql=f'SELECT `{name}`('+', '.join(columns)+f') AS actual FROM ({source}) AS events'
         if 'expected' in case:
             expected=case['expected']; ret=resolve(m,m['aggregates'][case.get('variant','')])['abi']
             if expected is None: literal='NULL'
@@ -212,11 +215,11 @@ def cases(m, database, public):
     return result
 
 
-def fixture_plan(m, database, public):
+def fixture_plan(m, public):
     fixtures=[]
     for fixture in m.get('fixtures',[]):
         name=ident(public+'_'+fixture['id']); columns=fixture['columns']
-        table=f'`{ident(database)}`.`{name}`'
+        table=f'`{name}`'
         create=f'CREATE ROWSTORE TABLE {table} ('+', '.join(f'`{n}` {TYPES[t][0]} NOT NULL' for n,t in columns.items())
         create+=', SHARD KEY('+', '.join('`'+n+'`' for n in fixture['shard_by'])+'))'
         inserts=[]
@@ -227,7 +230,7 @@ def fixture_plan(m, database, public):
         for case in fixture['cases']:
             args=[f"`{arg['column']}`" if 'column' in arg else value(arg['literal'],t) for arg,t in zip(case['arguments'],m['argument_types'])]
             groups=', '.join('`'+n+'`' for n in case['group_by'])
-            sql=f"SELECT {groups}, `{database}`.`{ident(public+case.get('variant',''))}`("+', '.join(args)+f') AS actual FROM {table}'
+            sql=f"SELECT {groups}, `{ident(public+case.get('variant',''))}`("+', '.join(args)+f') AS actual FROM {table}'
             if 'where_lt' in case:
                 col,limit=case['where_lt'];sql+=f' WHERE `{col}` < {value(limit,columns[col])}'
             mode=case.get('grouping','group')

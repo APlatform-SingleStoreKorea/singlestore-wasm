@@ -4,9 +4,9 @@
   "skills": [
     {
       "name": "singlestore-wasm",
-      "description": "Use when creating SingleStore Wasm functions. Implements function descriptions or Python/Rust code and verifies Wasm build artifacts and registration SQL.",
+      "description": "Use when creating SingleStore Wasm functions. Analyzes function descriptions or source code and verifies Wasm build artifacts and registration SQL.",
       "path": "skills/singlestore-wasm/SKILL.md",
-      "content_sha256": "2d529407ff79cbd06ce59582cdf5be161b3c8e00a3c709bcbcbb00aa8aabcbc3",
+      "content_sha256": "e2fa6b5f6bb73f8fe55364c35ac7e3793e89272c509e4c79796c87ac4ad37808",
       "tags": [
         "singlestore",
         "wasm",

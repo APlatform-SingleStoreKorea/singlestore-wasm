@@ -36,7 +36,9 @@ def assess(project):
             if hashlib.sha256((project/'artifacts'/name).read_bytes()).hexdigest()!=digest:
                 raise ValueError('artifact changed: '+name)
         m=manifest(project)
-        if (m.get('local_verify') or m.get('shape') == 'f64-scalar') and meta.get('wasm_runtime')!='passed':raise ValueError('local Wasm verification missing')
+        if (m.get('local_verify') or m.get('shape') in ('f64-scalar', 'typed-scalar')) and meta.get('wasm_runtime')!='passed':raise ValueError('local Wasm verification missing')
+        if m.get('shape') == 'typed-scalar' and 'typed-verification.json' not in hashes:
+            raise ValueError('typed runtime evidence missing')
         if m.get('shape') == 'f64-scalar' and 'numeric-verification.json' not in hashes:
             raise ValueError('numeric comparison evidence missing')
     except (ValueError,OSError,KeyError,TypeError) as exc:
@@ -49,6 +51,7 @@ def assess(project):
     result['reference_sources'] = m.get('reference', {}).get('sources', [])
     result['input_contracts'] = m.get('input_contracts', {})
     result['condition_array'] = m.get('condition_array')
+    result['public_contract'] = m.get('public_contract')
     result['semantic_verification'] = ('passed_for_manifest_cases' if
         result['reference_verification'].get('status') == 'passed' else 'unverified')
     if 'compatibility' in m:

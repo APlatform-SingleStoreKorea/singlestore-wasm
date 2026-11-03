@@ -9,11 +9,13 @@
 
 ## 가변 조건 입력
 
-동일한 의미의 반복 조건을 받는 가변 인자는 기본적으로 행별 `JSON_BUILD_ARRAY(...)` 하나로 묶는다. 조건 개수를 묻거나 개수별 공개 함수를 생성하지 않는다. 사용자가 고정 인자/기존 호출 유지를 명시하면 우선한다. Levenshtein의 두 문자열, Black–Scholes의 서로 다른 인자는 유지한다. sequenceMatch/sequenceCount는 패턴·시간을 유지하고 반복 조건 부분만 배열로 묶는다. 자세한 설정·템플릿·빈 입력 결정은 [JSON 조건 배열](json-condition-array.md)을 읽는다. 이 기본 호출 설계 자체를 다시 승인받지 않는다. retention의 JSON 입력에서 입력 행이 없어 조건 수를 알 수 없으면 같은 문서의 사용자 지정 `[]` 기본 정책을 적용하며 다시 묻지 않는다. 그 밖의 미합의 반환 의미 변경은 구체적 차이만 확인한다.
+원본 호출 형태의 조사·기본값 보존·형태별 검증은 [공통 생성 규칙](public-sql-contract.md#공통-생성-규칙-공개-호출-형태-전체-보존)을 적용한다. 사용자 지정 JSON 형식을 우선하며 가장 긴 호출만 구현하지 않는다.
+
+공개 SQL 계약은 지정 버전의 공식 문서에서 확인한다. 고정 인자의 개수·순서·의미를 유지하고, 원본의 복수 호출 형태를 대상 버전·설정에서 제공할 수 있는지 먼저 확인한다. 템플릿 부재는 제품 제약이 아니다. 대체 호출이 필요한 경우 JSON_BUILD_ARRAY를 사용하며 반복 부분만 묶고 역할이 다른 고정 인자는 유지한다. 공개 SQL에 없는 포인터·버퍼 길이·내부 제어값은 JSON에도 노출하지 않는다. 복합 값의 경계 정보와 공개 옵션은 내부 제어값과 구분한다. [공개 SQL 계약](public-sql-contract.md)의 매핑·타입·기본값·오류 규칙을 생성과 검증에 함께 적용한다.
 
 ## 생성과 구현
 
-이름·설명 기반 요청은 [원본 출처와 실행 비교](reference-verification.md)를 따른다. 공식 문서 및 원본 소스의 실제 참조 링크·버전·커밋과 확보 여부를 기록한다. 기본 기대값은 고정 원본 코드 또는 원본 엔진을 실행해 생성하며, AI가 원본을 읽고 작성한 기대값은 독립 원본 실행 증거가 아니다. 동일 입력·기대값을 Wasm과 DB 검증에 사용한다. 원본 실행 불가 시 이유를 기록하고 빌드는 계속하되 의미 검증은 미검증으로 보고한다.
+DB 함수의 이름·설명·원본 코드 기반 요청은 [원본 출처와 실행 비교](reference-verification.md)를 따른다. 공식 문서 및 원본 소스의 실제 참조 링크·버전·커밋과 확보 여부를 기록한다. 기본 기대값은 고정 원본 코드 또는 원본 엔진을 실행해 생성하며, AI가 원본을 읽고 작성한 기대값은 독립 원본 실행 증거가 아니다. 동일 입력·기대값을 Wasm과 DB 검증에 사용한다. 원본 실행 불가 시 이유를 기록하고 빌드는 계속하되 의미 검증은 미검증으로 보고한다.
 
 `<skill>`은 이 문서의 상위 디렉터리에서 SKILL.md가 있는 Skill 루트이며 명령은 그 위치의 실제 경로로 실행한다.
 
@@ -23,11 +25,13 @@ python3 <skill>/scripts/scaffold.py --name my_function --shape string-pair-i64 -
 
 현재 starter shape:
 
+- `typed-scalar` / `typed-udaf`: 공개 계약 기반 혼합 타입 고정 인자와 일반 JSON 전달. [공개 SQL 계약](public-sql-contract.md)의 지원 타입·반환·NULL 제약을 먼저 확인한다.
+
 - `json-array-udaf`: TEXT 배열 입력과 TEXT 반환의 HANDLE UDAF 연결 코드 및 공통 조건 배열 파서. 계산·상태·직렬화·입력 정책·독립 기대값은 새 요청에 맞춰 구현한다. 조건 수·NULL·빈 입력 정책과 과거 참조/승인/검증 자료는 포함하지 않는다. 다른 반환 계약은 ABI와 함께 조정한다.
 
 - `string-pair-i64`: UTF-8 문자열 둘 → i64. `src/logic.rs`에 `pub fn evaluate(left: &str, right: &str) -> i64`를 구현한다.
 - `i64-unary`: i64 하나 → i64. `pub fn evaluate(value: i64) -> i64`를 구현한다. 오버플로 계약을 명시한다.
-- `f64-scalar`: f64 인자 1~16개 → f64. `scaffold.py --shape f64-scalar --arguments s k t r sigma --name my_function --output <new-project>`처럼 원본 순서의 인자 이름을 지정한다. BASIC ABI와 SQL DOUBLE을 사용하며 실수 오차·Python 비교 설정은 [실수형 공용 프로필](python-porting.md#실수형-공용-프로필)을 따른다.
+- `f64-scalar`: f64 인자 1~16개 → f64. `scaffold.py --shape f64-scalar --arguments x y --name my_function --output <new-project>`처럼 원본 순서의 인자 이름을 지정한다. BASIC ABI와 SQL DOUBLE을 사용하며 실수 오차·Python 비교 설정은 [실수형 공용 프로필](python-porting.md#실수형-공용-프로필)을 따른다.
 
 모든 scalar starter는 public SQL wrapper가 NULL을 먼저 전파한다. 반환·입력 타입이나 NULL 계약이 다른 요청을 이 형태로 억지 변환하지 않는다. 원본 함수의 옵션·집계·순서·상태 의미를 임의로 생략하거나 축소하지 않는다. [abi.md](abi.md)를 참고해 필요한 Rust 연결 코드, WIT, Cargo 설정, SQL 템플릿과 빌드·검증 경로를 확장한다. 기존 scripts의 shape/manifest/시그니처 검사도 확인하며 WIT나 템플릿만 바꾸고 호환된다고 가정하지 않는다. 숫자 및 명시적 TEXT 입력 HANDLE UDAF는 [공통 집계 프로필](common-pipeline.md)로 같은 build.py/db_verify.py를 사용한다. 다른 UDAF/TVF에는 필요한 프로필 확장을 구현한다. 새 형태는 테스트·컴파일하고 DB 검증 여부를 별도로 보고한다.
 

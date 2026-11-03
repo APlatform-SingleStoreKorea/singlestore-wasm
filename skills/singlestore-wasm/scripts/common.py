@@ -25,6 +25,9 @@ def manifest(project):
         return validate(m)
     from return_contracts import resolve
     resolve(m)
+    if m['shape'] == 'typed-scalar':
+        from typed import validate_cases
+        return validate_cases(m)
     if m['shape'] not in ('string-pair-i64', 'i64-unary', 'f64-scalar'):
         raise ValueError('unsupported ABI shape; add and validate a new template first')
     floating = m['shape'] == 'f64-scalar'
@@ -185,8 +188,8 @@ def render(path, fields):
         raise ValueError('unresolved template field')
     return text.strip().removesuffix(';')
 
-def sql_statements(project, database, public):
-    database, public = identifier(database), identifier(public)
+def sql_statements(project, public):
+    public = identifier(public)
     core = identifier(public + '_core')
     m = manifest(project)
     verify_build(project)
@@ -200,7 +203,10 @@ def sql_statements(project, database, public):
              ('right_arg', 'TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_bin')] if m['shape'] == 'string-pair-i64' else [('value_arg', 'BIGINT')]
     if floating:
         pairs = [('arg_' + n, 'DOUBLE') for n in m['arguments']]
-    shared = dict(database=database, public=public, core=core,
+    if m['shape'] == 'typed-scalar':
+        from public_contract import sql_pairs
+        pairs = sql_pairs(m)
+    shared = dict(public=public, core=core,
                   memory_bytes=m.get('build', {}).get('memory_bytes', 16777216),
                   return_type=return_contract['sql_type'])
     raw = render('templates/sql/basic_core.sql' if floating else 'templates/sql/core.sql', dict(shared,
@@ -250,11 +256,13 @@ def literal(value):
     if type(value) is float and math.isfinite(value): return repr(value)
     raise ValueError('test input must be NULL, string, finite number, or repeat expression')
 
-def validation_sql(m, database, public):
+def validation_sql(m, public):
     statements = []
     for case in m['cases']:
-        args = ', '.join(literal(x) for x in case['args'])
-        call = f'`{identifier(database)}`.`{identifier(public)}`({args})'
+        from public_contract import sql_literal
+        encode = sql_literal if m['shape'] == 'typed-scalar' else literal
+        args = ', '.join(encode(x) for x in case['args'])
+        call = f'`{identifier(public)}`({args})'
         if 'expected_error' in case:
             sql = f'SELECT {call} AS expected_error'
         else:
@@ -287,24 +295,24 @@ def validation_file(checks, m, errors=False):
     return guidance+'SET NAMES utf8mb4;\n'+'\n\n'.join(blocks)+'\n'
 
 
-def write_sql(project, database, public):
+def write_sql(project, public):
     m = manifest(project)
     if m.get('kind') == 'handle-udaf':
         from aggregate import registrations, cases, fixture_plan
         verify_build(project)
-        items = registrations(project, m, database, public)
-        checks = cases(m, database, public)
-        fixtures = fixture_plan(m, database, public)
+        items = registrations(project, m, public)
+        checks = cases(m, public)
+        fixtures = fixture_plan(m, public)
         out = project / 'artifacts'
         (out/'register.sql').write_text(';\n'.join(x['sql'] for x in items)+';\n')
         for filename, error in [('validate.sql',False),('validate-errors.sql',True)]:
             (out/filename).write_text(validation_file(checks,m,error))
         (out/'sql-plan.json').write_text(json.dumps({'registrations':items,'cases':checks,'fixtures':fixtures},indent=2)+'\n')
         return items
-    raw, wrapper = sql_statements(project, database, public)
+    raw, wrapper = sql_statements(project, public)
     out = project / 'artifacts'
-    (out / 'register.sql').write_text(f'USE `{identifier(database)}`;\n{raw};\nDELIMITER //\n{wrapper}//\nDELIMITER ;\n')
-    checks=[{'case':case,'sql':sql} for case,sql in validation_sql(m,database,public)]
+    (out / 'register.sql').write_text(f'{raw};\nDELIMITER //\n{wrapper}//\nDELIMITER ;\n')
+    checks=[{'case':case,'sql':sql} for case,sql in validation_sql(m,public)]
     (out / 'validate.sql').write_text(validation_file(checks,m))
     (out / 'validate-errors.sql').write_text(validation_file(checks,m,True))
     return raw, wrapper

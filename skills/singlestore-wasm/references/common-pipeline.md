@@ -2,7 +2,7 @@
 
 ## 집계 프로필
 
-공통 `build.py` / `db_verify.py`는 scalar 세 shape 및 `kind: handle-udaf`, `schema_version: 1`을 지원한다. 새 집계 함수마다 Python 빌드·DB 실행기를 만들 필요는 없다. 알고리즘, 상태 메모리 소유권, 직렬화와 병합은 함수의 Rust 구현에 남는다. 명시적 TEXT/JSON 조건 배열은 json-array-udaf starter를 사용한다. 이 프로필 밖의 타입이나 새로운 ABI는 별도 확장·검증이 필요하다.
+공통 `build.py` / `db_verify.py`는 기존 scalar 세 shape, typed-scalar 및 `kind: handle-udaf`, `schema_version: 1`을 지원한다. 새 집계 함수마다 Python 빌드·DB 실행기를 만들 필요는 없다. 알고리즘, 상태 메모리 소유권, 직렬화와 병합은 함수의 Rust 구현에 남는다. 명시적 TEXT/JSON 조건 배열은 json-array-udaf starter를 사용한다. 이 프로필 밖의 타입이나 새로운 ABI는 별도 확장·검증이 필요하다.
 
 집계 manifest 필드:
 
@@ -41,6 +41,6 @@
 
 수동 검증용 `validate.sql`은 scalar/HANDLE 모두 `actual`, `expected`, `passed`를 출력한다. NULL은 NULL-safe 비교, 집계 DOUBLE은 계약의 절대 오차, f64 scalar는 절대+상대 오차를 적용한다. Python 코드 입력과 원본 비교는 [Python 이식 절차](python-porting.md)를 따른다. `validate-errors.sql`은 사례마다 기대 오류 코드와 메시지 조각을 주석으로 남기며, 오류 사례가 없는 경우 이를 명시한다. 최종 답변의 SQL 링크 3개는 같은 등록 이름의 파일 묶음이어야 한다. 분산 fixture 검증은 별도로 `sql-plan.json`에 기록되어 공통 DB 실행기가 수행한다.
 
-반환 계약과 정확한 SQL snapshot 일치 검사는 [return-contracts.md](return-contracts.md)를 따른다. DB 이름/함수명은 빌드에서 확정하고 runner에서 바꾸지 않는다.
+반환 계약과 정확한 SQL snapshot 일치 검사는 [return-contracts.md](return-contracts.md)를 따른다. 함수명은 빌드에서 확정하고 runner에서 바꾸지 않는다. SQL은 DB 접두어와 USE 없이 생성하며 DB 선택은 외부 접속 설정에서만 한다. 실제 검증 DB는 실행 보고서에 기록한다.
 
 JSON 배열 조건용 TEXT 입력은 [JSON 조건 배열](json-condition-array.md)을 따른다. 숫자 고정 인자 프로필은 그대로 지원하며 새 input_contracts/WIT/SQL/ITERATE lowering을 함께 검사한다.

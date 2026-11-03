@@ -133,6 +133,9 @@ def expected_wit(m, variant, c):
     if m.get('kind') != 'handle-udaf':
         params = (['string', 'string'] if m['shape'] == 'string-pair-i64' else
                   ['float64'] * len(m['arguments']) if m['shape'] == 'f64-scalar' else ['s64'])
+        if m['shape'] == 'typed-scalar':
+            from public_contract import argument_types
+            params = [WIT_TYPES.get(t,t) for t in argument_types(m)]
         return {'evaluate': (params, ret)}
     state = 's32'; blob = 'list<u8>'
     roles = {'initialize': ([], state), 'iterate': ([state]+[WIT_TYPES.get(t,t) for t in m['argument_types']], state),
@@ -154,6 +157,11 @@ def lower(params, ret):
 
 
 def check_project(project, m, inventory=None, registrations=None):
+    if 'public_contract' in m:
+        import json
+        frozen = Path(project)/'src/public-contract.json'
+        if not frozen.is_file() or json.loads(frozen.read_text()) != m['public_contract']:
+            fail(m,m,'generated input contract differs from manifest; regenerate in a new directory')
     path = Path(project)/'interface.wit'
     functions = wit_functions(path)
     exports = {e['name']: e for e in inventory['exports']} if inventory is not None else None
@@ -197,6 +205,11 @@ def check_sql(m, variant, c, sql, location, callbacks=None):
         expected_inputs = '('+', '.join(input_declarations(m))+')'
         if not sql.splitlines()[0].endswith(expected_inputs):
             fail(m, variant, 'SQL input declaration differs from manifest', location=location)
+    if m.get('shape') == 'typed-scalar':
+        from public_contract import sql_pairs
+        expected_inputs = '(' + ', '.join(n+' '+t+' NULL' for n,t in sql_pairs(m)) + ')'
+        if not sql.splitlines()[0].endswith(expected_inputs):
+            fail(m, variant, 'SQL public arguments differ from source mapping', location=location)
     match = re.search(r'\bRETURNS\s+(.+?)(?:\n|\s+AS\b)',sql,re.I)
     actual = match[1].strip() if match else 'missing'
     # Whitespace normalization only. TEXT/LONGTEXT, NULL, charset and collation are exact.

@@ -1,6 +1,6 @@
 ---
 name: singlestore-wasm
-description: Use when creating SingleStore Wasm functions. Implements function descriptions or Python/Rust code and verifies Wasm build artifacts and registration SQL.
+description: Use when creating SingleStore Wasm functions. Analyzes function descriptions or source code and verifies Wasm build artifacts and registration SQL.
 version: 1.0.0
 author: Consulting Team
 license: Proprietary
@@ -25,11 +25,12 @@ Python 입력에서는 [Python 이식 절차](references/python-porting.md)를 �
 
 기본 대상은 **SingleStore 9.1.1**이다. 다른 버전을 지정하면 해당 버전을 기준으로 판단한다. 구현 가능한 경로가 있으면 적합성 설명이나 계획만 제시하고 멈추지 말고 빌드와 산출물 생성까지 이어간다. DB 접속 정보가 없어도 로컬 구현·빌드·인코딩은 진행하고 DB 등록·호출은 미검증으로 표시한다. 컴파일 성공과 실제 DB 호환 성공은 구분한다.
 
-먼저 요구사항과 호환성을 분석한다. 코드·SQL 또는 기존 대화에서 인자 개수가 명확하면 해당 범위로 자동 진행한다. 내부 구현 또는 호출 방식만 달라지고 공개 함수 개수·반환 형식·계산 의미가 유지되면 사용자 확인 없이 진행한다. 호출 방식 변경은 [호환성 결정의 자동 진행 정책](references/compatibility-decisions.md#호출-방식-변경의-자동-진행)에 따라 기록하고 최종 사용 예시로 설명한다. 원본 대비 공개 함수 개수·반환 형식·계산 의미를 바꿔야 하면 차이와 구체적인 선택지를 설명하고 답변을 받은 뒤 설계를 확정한다. 전체 지원 요청은 범위 선택이며 반환 형식·계산 의미 변경 동의가 아니다. 이미 합의한 사항은 다시 묻지 않는다.
+먼저 요구사항과 호환성을 분석한다. DB 함수는 지정 버전 공식 문서의 공개 SQL 계약으로 범위를 정한다. 원본 소스의 SQL 진입 경로에서 내부 인자 매핑을 확인한다. 자세한 기록과 신규 생성 경로는 [공개 SQL 계약](references/public-sql-contract.md)을 따른다. 내부 구현 또는 호출 방식만 달라지고 공개 함수 개수·반환 형식·계산 의미가 유지되면 사용자 확인 없이 진행한다. 호출 방식 변경은 [호환성 결정의 자동 진행 정책](references/compatibility-decisions.md#호출-방식-변경의-자동-진행)에 따라 기록하고 최종 사용 예시로 설명한다. 원본 대비 공개 함수 개수·반환 형식·계산 의미를 바꿔야 하면 차이와 구체적인 선택지를 설명하고 답변을 받은 뒤 설계를 확정한다. 전체 지원 요청은 범위 선택이며 반환 형식·계산 의미 변경 동의가 아니다. 이미 합의한 사항은 다시 묻지 않는다.
+
+사용자가 범위를 제한하지 않은 원본 함수 이식은 모든 공개 호출 형태와 생략 기본값을 보존한다. C 내부 시그니처나 가장 긴 호출만으로 범위를 정하지 않는다. 사용자 지정 JSON 호출을 우선하고, 짧은 호출을 없앤 뒤 기본값을 사용자가 직접 넣게 하는 변경은 자동 승인하지 않는다. 생성 SQL과 사용 예시는 DB명 없이 함수명만 사용하며 `USE`를 넣지 않는다.
 
 모든 요청에서 [호환성 차이와 사용자 확인](references/compatibility-decisions.md)을 읽고 분석 → 범위·차이 결정 → 생성 → 등록 순서를 따른다. 답변 전에도 공통 조사·분석은 진행하지만 선택이 필요한 함수의 설계·생성·등록은 확정하지 않는다. 통상적인 내부 구현·출력 경로는 스킬이 정한다. 불가능하거나 차단된 경우에는 근거, 실패 단계, 필요한 정보 또는 환경을 설명한다. 수정 가능한 실패는 해결하고 재시도하되, 실패·부분·이전 산출물을 이번 요청의 정상 결과처럼 제공하지 않는다.
 
-retention을 행별 JSON 조건 배열 하나로 받는 경우, 입력 행이 전혀 없어 조건 수를 알 수 없는 집계의 결과는 기본적으로 `[]`로 한다. 이 빈 입력 정책은 사용자가 지정한 기본값이므로 다시 승인받지 않는다. 다른 빈 입력 결과나 고정 인자 호출을 사용자가 명시하면 그 요구를 우선한다. 세부 적용 범위와 결정 기록은 [JSON 조건 배열](references/json-condition-array.md)을 따른다. retention의 배열 결과는 기본적으로 JSON으로 직렬화하여 `TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL`로 반환한다. 이 반환 정책도 사용자가 지정한 기본값이므로 다시 묻지 않는다. 다른 함수나 사용자가 명시한 다른 반환 계약에는 확대 적용하지 않는다.
 
 ## When to Use
 
@@ -59,13 +60,13 @@ retention을 행별 JSON 조건 배열 하나로 받는 경우, 입력 행이 �
 
    완료 조건: 함수별 feasibility.md에 참조 버전·출처, 입력·출력·NULL·옵션·경계 사례, ABI와 외부 의존성, 가능/조건부 가능/불가 근거를 기록했다. 호출 방식만의 변경은 자동 진행 근거를 기록했고, 공개 함수 개수·반환 형식·계산 의미의 변경은 사용자의 선택이 확정되었다.
 
-2. **새 작업 디렉터리에 구현한다.** [구현 절차](references/implementation.md)에 따라 `scripts/scaffold.py`와 `templates/`를 사용하고 Rust 로직·테스트·독립 기대값을 작성한다. 반복 조건 배열이면 [JSON 조건 배열](references/json-condition-array.md), 새 ABI이면 [ABI](references/abi.md), HANDLE 집계이면 [공통 실행기](references/common-pipeline.md)를 읽는다.
+2. **새 작업 디렉터리에 구현한다.** [구현 절차](references/implementation.md)에 따라 `scripts/scaffold.py`와 `templates/`를 사용하고 Rust 로직·테스트·독립 기대값을 작성한다. 혼합 타입·일반 JSON 인자는 [공개 SQL 계약](references/public-sql-contract.md), 반복 조건 배열이면 [JSON 조건 배열](references/json-condition-array.md), 새 ABI이면 [ABI](references/abi.md), HANDLE 집계이면 [공통 실행기](references/common-pipeline.md)를 읽는다.
 
    완료 조건: 요청된 의미와 선택된 계약이 소스·function.json·WIT에 반영되었고 과거 승인이나 검증 성공을 상속하지 않았다. 기존 구현을 덮어쓰지 않았다.
 
 3. **반환 계약을 검사하고 빌드한다.** [실행 절차](references/execution.md)와 [반환 계약](references/return-contracts.md)에 따라 `scripts/build.py`를 실행한다. 미구현 starter나 임의 기대값으로 성공 처리하지 않는다.
 
-   완료 조건: 실제 Rust 테스트·Wasm 컴파일, WIT/manifest/export/SQL 계약 검사, Base64 왕복과 SHA-256 검사가 통과하고 등록·정상·오류 검증 SQL이 생성되었다. 원본 실행 비교 여부를 별도로 기록했다.
+   완료 조건: 실제 Rust 테스트·Wasm 컴파일, WIT/manifest/export/SQL 계약 검사, Base64 왕복과 SHA-256 검사가 통과하고 등록·정상·오류 검증 SQL이 생성되었다. 원본 호출 형태별 구현·정상 사례와 생략 기본값을 대조했고 SQL에 `USE`와 DB 접두어가 없다. 원본 실행 비교 여부를 별도로 기록했다.
 
 4. **허용된 경우 DB에서 검증한다.** [실행 절차](references/execution.md)의 DB 실행 규칙에 따라 `scripts/db_verify.py`로 제공 SQL의 snapshot을 등록·호출한다. DB 미제공이면 이 단계만 미실행으로 기록한다.
 
@@ -87,10 +88,10 @@ retention을 행별 JSON 조건 배열 하나로 받는 경우, 입력 행이 �
 ## Common Pitfalls
 
 - Python 원본 실행 증거와 AI가 작성한 기대값을 혼동하지 않는다. 실행 불가 시 의미 검증은 미검증으로 보고한다.
-- 반복 조건은 기본적으로 JSON 배열 하나로 받지만, 인자마다 의미가 다른 함수에 일괄 적용하지 않는다. 세부 규칙은 구현 절차를 따른다.
+- 원본 호출 유지 가능성을 먼저 확인한다. JSON 대체 시 반복 조건만 묶고 역할이 다른 고정 인자와 순서를 유지한다. 세부 규칙은 구현 절차를 따른다.
 - WIT의 string만으로 SQL TEXT/LONGTEXT·charset·collation·nullable을 정하지 않는다. 반환 계약에 각각 명시한다.
 - ABI/WIT 또는 템플릿만 바꾸고 기존 빌더가 호환된다고 가정하지 않는다. manifest·시그니처 검사와 검증 경로도 확인한다.
-- 이전 요청의 승인·원본 비교·DB 성공을 새 요청에 적용하지 않는다. 함수명이나 DB가 바뀌면 재빌드하고 SQL snapshot을 일치시킨다.
+- 이전 요청의 승인·원본 비교·DB 성공을 새 요청에 적용하지 않는다. 함수명이 바뀌면 재빌드하고 SQL snapshot을 일치시킨다. DB만 바뀌면 같은 SQL을 사용하되 해당 DB의 등록·호출은 별도로 검증한다.
 - core/wrapper 이름과 사용자 호출용 이름을 구분한다. 실제 Base64 대신 placeholder를 제공하지 않는다.
 
 ## Verification Checklist

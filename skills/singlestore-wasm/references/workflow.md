@@ -26,7 +26,9 @@ database = t
 
 디렉터리 mode 700, 파일 mode 600으로 저장하고 `.gitignore`에서 제외한다. ConfigParser interpolation은 꺼져 있어 비밀번호의 `%`도 그대로 읽는다. 명령행에는 `--config` 경로만 넘긴다.
 
-`function.json` 스키마: name/shape/null_policy/cases 필수, 선택 error_sentinel/error_message/max_codepoints. name은 lowercase identifier 36자 이내. case의 args는 shape의 인자 수와 일치해야 한다. expected 정수/NULL 또는 expected_error 메시지를 지정한다. f64-scalar는 실수 기대값, 인자 목록, 절대·상대 오차 및 선택적 Python 원본 비교를 지원하며 [Python 이식 절차](python-porting.md)를 따른다. repeat 객체는 Python에서 펼쳐 UTF-8 hex SQL 리터럴로 만든다. 검증 기대값은 클라이언트에서 전개한 UTF-8 hex 리터럴로 생성한다. MySQL 표현식의 호환성을 가정하지 말고 대상 엔진에서 확인한다.
+typed 경로의 `public_contract`와 생성 방법은 [공개 SQL 계약](public-sql-contract.md)을 따른다.
+
+기존 `function.json` 스키마: name/shape/null_policy/cases 필수, 선택 error_sentinel/error_message/max_codepoints. name은 lowercase identifier 36자 이내. case의 args는 shape의 인자 수와 일치해야 한다. expected 정수/NULL 또는 expected_error 메시지를 지정한다. f64-scalar는 실수 기대값, 인자 목록, 절대·상대 오차 및 선택적 Python 원본 비교를 지원하며 [Python 이식 절차](python-porting.md)를 따른다. repeat 객체는 Python에서 펼쳐 UTF-8 hex SQL 리터럴로 만든다. 검증 기대값은 클라이언트에서 전개한 UTF-8 hex 리터럴로 생성한다. MySQL 표현식의 호환성을 가정하지 말고 대상 엔진에서 확인한다.
 
 새 요청에는 [호환성 결정 기록](compatibility-decisions.md)의 `compatibility`도 포함한다. 조건 개수와 공개 계약을 먼저 확정하고 선택한 함수만 생성한다. 이 기록은 build/SQL/DB 공통 검사 및 소스 해시에 포함되므로 선택을 바꾼 뒤 이전 SQL을 재사용하지 않는다.
 

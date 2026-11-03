@@ -11,13 +11,24 @@ SKILL = Path(__file__).resolve().parents[1]
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument('--name', required=True)
-    ap.add_argument('--shape', choices=['string-pair-i64', 'i64-unary', 'f64-scalar', 'json-array-udaf'], required=True)
+    ap.add_argument('--shape', choices=['string-pair-i64', 'i64-unary', 'f64-scalar', 'json-array-udaf', 'typed-scalar', 'typed-udaf'], required=True)
+    ap.add_argument('--contract', type=Path, help='Versioned public SQL contract for typed-scalar/typed-udaf')
     ap.add_argument('--arguments', nargs='+', help='f64-scalar argument names in source order')
     ap.add_argument('--output', type=Path, required=True)
     ap.add_argument('--compatibility', type=Path, help='Analyzed scope and public-contract decisions')
     ns = ap.parse_args()
     if not re.fullmatch(r'[a-z][a-z0-9_]{0,35}', ns.name):
         ap.error('name must be a lowercase identifier of at most 36 characters')
+    if ns.shape in ('typed-scalar', 'typed-udaf'):
+        if not ns.contract or ns.arguments or ns.compatibility:
+            ap.error('typed shapes require --contract; use its source/target mappings instead of --arguments/--compatibility')
+        from typed import generate, generate_udaf
+        create = generate_udaf if ns.shape == 'typed-udaf' else generate
+        create(ns.output, SKILL, ns.name, json.loads(ns.contract.read_text()))
+        print(f'Created {ns.output}; implement SQL semantics and independent cases; fetch pinned JSON dependencies before offline build if used.')
+        return
+    if ns.contract:
+        ap.error('--contract applies to typed shapes only')
     floating = ns.shape == 'f64-scalar'
     if floating and (not ns.arguments or len(ns.arguments) > 16
                      or len(set(ns.arguments)) != len(ns.arguments)

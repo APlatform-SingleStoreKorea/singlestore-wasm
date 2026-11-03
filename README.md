@@ -1,6 +1,6 @@
 # SingleStore Wasm Skill for Codex
 
-함수 이름·동작 설명이나 Python/Rust 코드를 바탕으로 **SingleStore용 Wasm 함수와 등록 SQL을 만드는 Codex 스킬**입니다. 행별 값을 계산하는 함수(UDF)와 여러 행을 집계하는 함수(UDAF)를 구현하며, 입력 코드와 대상 DB의 호환성을 확인해 구현 방식을 결정합니다.
+함수 이름·동작 설명이나 원본 코드를 바탕으로 **SingleStore용 Wasm 함수와 등록 SQL을 만드는 Codex 스킬**입니다. 행별 값을 계산하는 함수(UDF)와 여러 행을 집계하는 함수(UDAF)를 구현하며, 입력 코드와 대상 DB의 호환성을 확인해 구현 방식을 결정합니다.
 
 스킬에는 구현 지침, 참조 문서, 빌드·검증 스크립트가 포함되어 있습니다. Codex가 이를 따라 적용 가능성을 판단하고, Rust 구현과 실제 Wasm 컴파일, Base64 변환, 등록 SQL·검증 SQL 생성까지 진행합니다. Python 입력은 코드와 의존성을 분석해 Rust로 이식하고, 원본 실행이 가능하면 결과를 비교합니다.
 
@@ -12,9 +12,9 @@ DB 접속 정보가 없어도 로컬 구현·빌드·SQL 생성까지 진행합�
 - 에이전트: Codex
 - 문서화된 빌드 환경: Ubuntu, Python 3.12, Rust 1.85.0, `wasm32-unknown-unknown`
 - 기본 대상 DB: SingleStore 9.1.1. 다른 버전을 요청하면 해당 버전의 호환성을 별도로 확인합니다.
-- 입력: 함수 이름·동작 설명, Python 코드, Rust 코드
+- 입력: 함수 이름·동작 설명 또는 원본 코드. Python/Rust 외 언어도 의존성과 호환성을 분석해 이식 가능 여부를 판단합니다.
 
-다른 언어나 실행 환경은 개별 분석과 검증이 필요합니다.
+임의의 C 코드나 모든 실행 환경을 일괄 지원하지 않습니다. DB 함수는 지정 버전의 공개 SQL 인터페이스를 기준으로 구현하며, 내부 C 시그니처를 사용자 인자로 노출하지 않습니다.
 
 
 ## 설치
@@ -73,9 +73,12 @@ Python 작업 파일을 지정하여 요청:
 
 > `src/scoring.py`의 `calculate_score` 함수를 SingleStore Wasm 함수로 만들어줘. 입력과 반환 형식은 원본을 유지하고, 원본 실행 결과와 비교해줘.
 
-Rust 코드를 첨부하고 스킬을 명시적으로 선택하여 요청:
+원본 코드를 전달하여 구현 요청:
 
-> $singlestore-wasm 이 Rust 함수를 SingleStore Wasm 함수로 만들어줘.
+> PostgreSQL 18.0의 levenshtein 구현 코드는 다음과 같습니다.
+> 이 코드를 참고하여 SingleStore용 Wasm 함수를 만들어주세요.
+> 공개 인자와 동작은 PostgreSQL 공식 문서의 SQL 함수 인터페이스를 기준으로 맞춰주세요.
+> <levenshtein.c 코드>
 
 Codex가 입력 코드와 함수 의미, SingleStore 호환성을 확인한 뒤 구현합니다. 원본과 공개 함수 개수·반환 형식·계산 의미가 달라져야 하는 경우에는 차이를 설명하고 선택을 확인합니다.
 

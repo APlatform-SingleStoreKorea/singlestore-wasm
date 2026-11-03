@@ -36,14 +36,14 @@ def expected_user_error(exc, case, spec):
             and case['expected_error'] in str(exc) and spec.get('error_message', '') in str(exc))
 
 
-def plan(project, m, database, public):
+def plan(project, m, public):
     if m.get('kind') == 'handle-udaf':
-        return {'registrations': registrations(project,m,database,public),
-                'cases': cases(m,database,public), 'fixtures': fixture_plan(m,database,public)}
-    raw, wrapper = sql_statements(project,database,public)
+        return {'registrations': registrations(project,m,public),
+                'cases': cases(m,public), 'fixtures': fixture_plan(m,public)}
+    raw, wrapper = sql_statements(project,public)
     return {'registrations': [{'name':identifier(public+'_core'),'kind':'FUNCTION','sql':raw},
                               {'name':public,'kind':'FUNCTION','sql':wrapper}],
-            'cases':[{'case':case,'sql':sql} for case,sql in validation_sql(m,database,public)], 'fixtures':[]}
+            'cases':[{'case':case,'sql':sql} for case,sql in validation_sql(m,public)], 'fixtures':[]}
 
 
 def snapshot_sql(out,snapshot):
@@ -60,17 +60,20 @@ def snapshot_sql(out,snapshot):
 def main():
     ap=argparse.ArgumentParser(description=__doc__)
     ap.add_argument('project',type=Path);ap.add_argument('--config',type=Path,required=True)
-    ap.add_argument('--database',default='t');ap.add_argument('--name')
+    ap.add_argument('--database', help='Optional connection database; defaults to the external INI setting');ap.add_argument('--name')
     ap.add_argument('--cleanup',action='store_true',help='Drop only objects created by this invocation, including after failures')
-    ns=ap.parse_args();project=ns.project.resolve();m=manifest(project);database=identifier(ns.database)
+    ns=ap.parse_args();project=ns.project.resolve();m=manifest(project)
     meta=verify_build(project)
     if not meta.get('sql_public'):raise ValueError('rebuild with current tools to bind SQL names')
     public=identifier(meta['sql_public'])
-    if (ns.name and ns.name!=public) or meta.get('sql_database')!=database:
-        raise ValueError('SQL name/database differs from build; rebuild with --sql-name/--database')
+    if ns.name and ns.name!=public:
+        raise ValueError('SQL name differs from build; rebuild with --sql-name')
+    if meta.get('sql_database') is not None:
+        raise ValueError('rebuild with current tools to produce database-independent SQL')
     if not public.startswith('ssws_'):ap.error('use ssws_ prefix')
     if ns.config.stat().st_mode & 0o077:ap.error('credential file must have mode 600 or stricter')
     cfg=configparser.ConfigParser(interpolation=None);cfg.read(ns.config);c=cfg['client']
+    database=identifier(ns.database or c['database'])
     if c['database']!=database:ap.error('database must match connection setting')
     b64=(project/'artifacts/module.wasm.b64').read_text().strip()
     def clean(exc):
@@ -78,7 +81,7 @@ def main():
         for key in ('password','host','user'):
             if c.get(key):text=text.replace(c[key],'[REDACTED]')
         return text
-    p=plan(project,m,database,public)
+    p=plan(project,m,public)
     static_contracts=check_project(project,m,inspect((project/'artifacts/module.wasm').read_bytes()),p['registrations'])
     objects=p['registrations']+p['fixtures']
     names=[x['name'].lower() for x in objects]
@@ -114,7 +117,6 @@ def main():
                 cur.execute(obj['sql']);report['created_objects'].append({'name':obj['name'],'kind':obj['kind']});save()
             stage='register.sql'
             registration_sql=read_statements(snapshot/'register.sql')
-            if registration_sql and registration_sql[0]==f'USE `{database}`':cur.execute(registration_sql.pop(0))
             if registration_sql != [x['sql'] for x in p['registrations']]:raise ValueError('artifact SQL differs from checked registration plan')
             if len(registration_sql)!=len(p['registrations']):raise ValueError('registration file count mismatch')
             for obj,sql in zip(p['registrations'],registration_sql):

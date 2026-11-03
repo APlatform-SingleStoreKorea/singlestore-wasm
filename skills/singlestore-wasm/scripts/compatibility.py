@@ -81,6 +81,9 @@ def require_ready(plan, arity, public_variants=None):
 
 
 def validate_manifest(manifest):
+    if 'public_contract' in manifest:
+        from public_contract import validate
+        validate(manifest['public_contract'])
     if manifest.get('request_review_required'):
         raise ValueError('new request review required; replace compatibility and clear request_review_required after reviewing contract, sources and cases')
     # Legacy pinned projects remain reproducible; new requests must record decisions.
@@ -90,7 +93,9 @@ def validate_manifest(manifest):
         return require_ready(manifest['compatibility'], len(manifest['argument_types']),
                              list(manifest['aggregates']))
     shape = manifest.get('shape')
-    if shape == 'f64-scalar':
+    if shape == 'typed-scalar':
+        arity = len(manifest['public_contract']['target']['arguments'])
+    elif shape == 'f64-scalar':
         arity = len(manifest['arguments'])
     elif shape in {'string-pair-i64', 'i64-unary'}:
         arity = 2 if shape == 'string-pair-i64' else 1

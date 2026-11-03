@@ -28,7 +28,6 @@ def passed_test_count(output):
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument('project', type=Path)
-    ap.add_argument('--database', default='t')
     ap.add_argument('--sql-name')
     args = ap.parse_args()
     project = args.project.resolve(); out = project / 'artifacts'; out.mkdir(exist_ok=True)
@@ -64,7 +63,10 @@ def main():
             from aggregate import signatures
             expected=signatures(m)
         else:
-            if m['shape'] == 'f64-scalar':
+            if m['shape'] == 'typed-scalar':
+                from return_contracts import expected_wit, lower, resolve
+                expected = {n:lower(p,r) for n,(p,r) in expected_wit(m,m,resolve(m)).items()}
+            elif m['shape'] == 'f64-scalar':
                 expected = {'evaluate': (['f64'] * len(m['arguments']), ['f64'])}
                 wit = 'evaluate: func(' + ', '.join('arg-' + n.replace('_', '-') + ': float64' for n in m['arguments']) + ') -> float64'
                 if (project/'interface.wit').read_text().strip() != wit:
@@ -75,7 +77,7 @@ def main():
         for name,(parameters,results) in expected.items():
             if name not in exports or exports[name].get('parameters')!=parameters or exports[name].get('results')!=results:
                 raise ValueError('Wasm signature mismatch: '+name)
-        if handle or m.get('shape')=='string-pair-i64':
+        if handle or m.get('shape') in ('string-pair-i64', 'typed-scalar'):
             for name in ('memory','canonical_abi_realloc','canonical_abi_free'):
                 if name not in exports:raise ValueError('Missing ABI export: '+name)
         if inventory['memories'][0]['max_pages']!=memory//65536:raise ValueError('memory ceiling mismatch')
@@ -86,6 +88,12 @@ def main():
             (out/'numeric-verification.json').write_text(json.dumps(result,indent=2,allow_nan=False)+'\n')
             if result['status'] != 'passed':
                 raise ValueError('numeric Wasm/reference comparison failed; see numeric-verification.json')
+            runtime = 'passed'
+        if m.get('shape') == 'typed-scalar':
+            from typed import verify
+            result = verify(project,binary,m)
+            (out/'typed-verification.json').write_text(json.dumps(result,indent=2)+'\n')
+            if result['status'] != 'passed': raise ValueError('typed Wasm execution failed')
             runtime = 'passed'
         if m.get('local_verify'):
             script=(project/m['local_verify']).resolve()
@@ -110,24 +118,26 @@ def main():
             wasm_sha256=hashlib.sha256(binary).hexdigest(),wit_sha256=hashlib.sha256(wit).hexdigest(),inventory=inventory)
         save()
         public=args.sql_name or 'ssws_'+m['name']+'_'+secrets.token_hex(4)
-        generated=write_sql(project,args.database,public)
+        generated=write_sql(project,public)
         regs=generated if handle else [{'sql':x} for x in generated]
         contracts=check_project(project,m,inventory,regs)
         (out/'return-contracts.json').write_text(json.dumps({'static':'passed','db':'not_run','returns':contracts},indent=2)+'\n')
-        metadata.update(sql_database=args.database,sql_public=public,return_contracts=contracts)
+        metadata.update(sql_database=None,sql_public=public,return_contracts=contracts)
         manual_files = []
         for name, relative in m.get('manual_sql', {}).items():
             path = (project/relative).resolve()
             if (not re.fullmatch(r'manual-[a-z-]+\.sql', name)
                     or not path.is_relative_to((project/'tests').resolve()) or not path.is_file()):
                 raise ValueError('manual SQL must be a tests/ template and use a manual-*.sql output name')
-            sql = path.read_text().replace('{{database}}', args.database).replace('{{public}}', public)
+            sql = path.read_text().replace('{{public}}', public)
+            if '{{database}}' in sql:
+                raise ValueError('manual SQL must use unqualified names; remove database placeholders')
             (out/name).write_text(sql)
             manual_files.append(name)
         if handle and m.get('fixtures'):
             from aggregate import fixture_plan
             blocks = ['-- NOT EXECUTED here. User-only fixture setup and checks. Existing names cause CREATE to fail.']
-            for fixture in fixture_plan(m, args.database, public):
+            for fixture in fixture_plan(m, public):
                 blocks.extend([fixture['sql']+';']+[s+';' for s in fixture['inserts']])
                 for check in fixture['checks']:
                     blocks.append('-- Expected rows: '+json.dumps(check['case']['expected_rows']))
@@ -137,6 +147,8 @@ def main():
         metadata['artifact_hashes']={n:hashlib.sha256((out/n).read_bytes()).hexdigest() for n in
             ('module.wasm','module.wasm.b64','interface.wit.b64','register.sql','validate.sql','validate-errors.sql','return-contracts.json','reference-verification.json')}
         if handle:metadata['artifact_hashes']['sql-plan.json']=hashlib.sha256((out/'sql-plan.json').read_bytes()).hexdigest()
+        if m.get('shape') == 'typed-scalar':
+            metadata['artifact_hashes']['typed-verification.json'] = hashlib.sha256((out/'typed-verification.json').read_bytes()).hexdigest()
         for name in manual_files:
             metadata['artifact_hashes'][name] = hashlib.sha256((out/name).read_bytes()).hexdigest()
         for name in ('numeric-verification.json', 'local-verification.json'):

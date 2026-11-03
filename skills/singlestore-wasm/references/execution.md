@@ -11,7 +11,7 @@
 [workflow.md](workflow.md)의 환경 설정 후:
 
 ```bash
-python3 <skill>/scripts/build.py <new-project> --database t
+python3 <skill>/scripts/build.py <new-project>
 ```
 
 Rust 1.85.0, wasm32-unknown-unknown을 고정한 프로필이다. 기존 정수·문자열 프로필은 외부 Rust 크레이트가 없다. Cargo.lock을 보존하고 `--locked --offline`로 테스트·빌드한다. 새 의존성이 필요하면 pin/lock하고 host import와 빌드 재현성을 검토한다. 현재 build.py는 import 없는 순수 함수 프로필만 받는다.
@@ -27,10 +27,12 @@ Rust 1.85.0, wasm32-unknown-unknown을 고정한 프로필이다. 기존 정수�
 DB 설정이 제공되고 그 DB 작업이 허용된 경우에만 실행한다. 사용자 제공 범위를 따른다. root는 필요 조건이 아니다. 설정은 Git 제외 로컬 INI 파일(mode 600), 비밀번호는 명령행·소스·로그에 넣지 않는다. [workflow.md](workflow.md)에 예시가 있다.
 
 ```bash
-python3 <skill>/scripts/db_verify.py <new-project> --config <local-db.ini> --database t
+python3 <skill>/scripts/db_verify.py <new-project> --config <local-db.ini>
 ```
 
-함수명은 build.py 단계에서 고유하게 확정한다. DB runner는 `artifacts/` SQL 3개를 snapshot으로 그대로 복사해 실행하고 바이트와 SHA-256을 비교한다. 다른 이름이나 DB가 필요하면 해당 설정으로 재빌드한다.
+함수명은 build.py 단계에서 고유하게 확정한다. 등록·정상·오류 검증·수동 fixture SQL과 사용 예시에는 `USE`나 DB 접두어를 넣지 않는다. 현재 연결에서 선택한 DB에 등록·호출한다. `build.py`는 DB 인자를 받지 않으며 수동 SQL 템플릿에도 `{{database}}`를 사용하지 않는다.
+
+DB runner는 외부 INI의 database를 접속 대상으로 사용한다. 선택적 `--database`는 INI와 일치하는지 검사하는 접속 옵션이며 산출물 SQL에 삽입하지 않는다. DB runner는 `artifacts/` SQL 3개를 snapshot으로 그대로 복사해 실행하고 바이트와 SHA-256을 비교한다. 함수명을 바꾸면 재빌드하며 DB 선택만 바뀌면 같은 SQL을 사용할 수 있다. 실제 실행 대상 DB는 검증 보고서에 남기고 다른 DB의 과거 검증을 해당 DB의 성공으로 주장하지 않는다.
 
 실제 `@@memsql_version`, Wasm 변수, packet 크기와 기존 함수/프로시저/테이블/UDAF를 조회한 뒤 고유 `ssws_...` 이름으로 CREATE만 한다. 충돌 시 중단하고 새 이름을 쓴다. 기존 객체에 OR REPLACE/DROP을 적용하지 않는다. 전역 설정 변경·서버 재시작·다른 DB 변경은 포함하지 않는다. 기본은 생성 객체를 보존한다. `--cleanup`은 이번 프로세스가 생성한 객체만 정리한다.
 

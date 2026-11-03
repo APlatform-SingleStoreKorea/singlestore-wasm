@@ -3,7 +3,9 @@
   "positive": [
     "이 Python 계산 코드를 SingleStore Wasm 함수로 이식하고 등록 SQL까지 만들어줘.",
     "두 문자열의 편집 거리를 구하는 SingleStore Wasm 함수를 구현해줘.",
-    "이 Skill로 만든 Wasm 함수의 반환 계약과 빌드 산출물이 일치하는지 검증해줘."
+    "이 Skill로 만든 Wasm 함수의 반환 계약과 빌드 산출물이 일치하는지 검증해줘.",
+    "PostgreSQL 18.0 함수의 C 코드를 참고해 공개 SQL 인자와 동작을 유지하는 SingleStore Wasm 함수를 만들어줘.",
+    "이 DB 함수의 모든 공개 호출 형태와 생략 기본값을 JSON_BUILD_ARRAY 방식으로 보존해서 SingleStore Wasm으로 이식해줘. 생성 SQL에는 USE나 DB명을 넣지 마."
   ],
   "negative": [
     "SingleStore 테스트 클러스터를 yum으로 설치해줘.",
