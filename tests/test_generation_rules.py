@@ -9,7 +9,7 @@ from unittest.mock import patch
 from test_public_contract import SKILL, contract
 from typed import generate, generate_udaf, validate_cases
 from common import write_sql, manifest
-from aggregate import fixture_plan
+from aggregate import fixture_plan, input_declarations
 
 
 class GenerationRulesTest(unittest.TestCase):
@@ -57,6 +57,28 @@ class GenerationRulesTest(unittest.TestCase):
             (p/'function.json').write_text(json.dumps(m))
             manifest(p)
 
+    def test_udaf_defaults_and_omitted_sql_arguments_are_rejected(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = Path(d) / 'project'
+            generate_udaf(p, SKILL, 'explicit_args', contract(udaf=True))
+            m = json.loads((p/'function.json').read_text())
+            m['cases'] = [{'id': 'row', 'rows': [['a', 2]], 'expected': '3'}]
+            (p/'function.json').write_text(json.dumps(m))
+            manifest(p)
+            for defaults in ({'0': '[]'}, {'1': 0}):
+                with self.subTest(defaults=defaults):
+                    m['argument_defaults'] = defaults
+                    (p/'function.json').write_text(json.dumps(m))
+                    with self.assertRaisesRegex(ValueError, 'CREATE AGGREGATE.*DEFAULT'):
+                        manifest(p)
+                    with self.assertRaisesRegex(ValueError, 'pass all SQL arguments'):
+                        input_declarations(m)
+            del m['argument_defaults']
+            m['cases'][0]['rows'] = [['a']]
+            (p/'function.json').write_text(json.dumps(m))
+            with self.assertRaisesRegex(ValueError, 'argument arity mismatch'):
+                manifest(p)
+
     def test_scalar_and_udaf_sql_have_no_database(self):
         for udaf in (False, True):
             with self.subTest(udaf=udaf), tempfile.TemporaryDirectory() as d:
@@ -74,6 +96,9 @@ class GenerationRulesTest(unittest.TestCase):
                 sql = '\n'.join(f.read_text() for f in (p/'artifacts').glob('*.sql'))
                 self.assertNotRegex(sql, r'(?im)^\s*USE\s|`\w+`\s*\.\s*`')
                 self.assertIn('`ssws_plain`', sql)
+                if udaf:
+                    self.assertNotRegex(sql, r'(?i)\bDEFAULT\b')
+                    self.assertIn('`ssws_plain`(a0, a1)', sql)
                 if not udaf:
                     self.assertIn('result = `ssws_plain_core`(', sql)
 

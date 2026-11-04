@@ -158,6 +158,8 @@ def signatures(m):
 
 
 def input_declarations(m):
+    if m.get('argument_defaults') not in (None, {}):
+        raise ValueError('CREATE AGGREGATE does not support argument DEFAULT; pass all SQL arguments explicitly')
     contracts = m.get('input_contracts', {})
     expected_keys = {str(i) for i,t in enumerate(m['argument_types']) if t == 'string'}
     if set(contracts) != expected_keys:

@@ -4,6 +4,8 @@
 
 공통 `build.py` / `db_verify.py`는 기존 scalar 세 shape, typed-scalar 및 `kind: handle-udaf`, `schema_version: 1`을 지원한다. 새 집계 함수마다 Python 빌드·DB 실행기를 만들 필요는 없다. 알고리즘, 상태 메모리 소유권, 직렬화와 병합은 함수의 Rust 구현에 남는다. 명시적 TEXT/JSON 조건 배열은 json-array-udaf starter를 사용한다. 이 프로필 밖의 타입이나 새로운 ABI는 별도 확장·검증이 필요하다.
 
+CREATE AGGREGATE에는 인자 DEFAULT를 사용하지 않는다. 모든 호출에 SQL 인자를 명시하며 원본 생략 기본값은 호출에서 전달한다. `argument_defaults`에 기본값을 지정하면 검증·SQL 생성에서 거부한다. 일반 UDF에는 이 제약을 적용하지 않는다. [공개 SQL 계약의 집계 예외](public-sql-contract.md#create-aggregate의-default-제약)를 따른다.
+
 집계 manifest 필드:
 
 - `argument_types`: `s64`, `u64`, `s32`, `u32`, `f64`, 명시적 input_contracts를 갖는 `string` 목록. 입력은 NOT NULL. NULL 행의 전처리 의미는 함수 계약에 명시한다.
